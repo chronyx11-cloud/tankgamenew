@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Tank Savaşı - Taktiksel Fetih & Liderlik</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #08080a;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.95);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #333;
+            width: 900px;
+            height: 600px;
+            background-color: #1a1e16;
+        }
+        canvas {
+            display: block;
+        }
+
+        .overlay-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 12, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            gap: 12px;
+        }
+        .overlay-panel h1, .overlay-panel h2 {
+            color: #ff9800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(255, 152, 0, 0.6);
+        }
+
+        .auth-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 300px;
+        }
+        .auth-input, .admin-select {
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #1a1a1e;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+        .auth-input:focus, .admin-select:focus { border-color: #ff9800; }
+        .menu-btn {
+            background: #2a2a30;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            width: 260px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .menu-btn:hover {
+            background: #3a3a42;
+            border-color: #ff9800;
+            transform: translateY(-2px);
+        }
+        .btn-primary { background: #ff9800; color: #000; border: none; }
+        .btn-primary:hover { background: #ffa726; }
+        .btn-conquest { background: #2196F3; color: #fff; border: none; }
+        .btn-conquest:hover { background: #42a5f5; }
+        .btn-danger { background: #d32f2f; color: #fff; border: none; }
+        .btn-danger:hover { background: #f44336; }
+        .btn-admin { background: #9c27b0; color: #fff; border: none; }
+        .btn-admin:hover { background: #ab47bc; }
+        .btn-leaderboard { background: #ff5722; color: #fff; border: none; }
+        .btn-leaderboard:hover { background: #ff7043; }
+
+        #ui-layer {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.9);
+            z-index: 5;
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.82);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 4px solid #4CAF50;
+            pointer-events: auto;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .hud-btn {
+            background: #cc2222;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            pointer-events: auto;
+        }
+
+        #victory-banner {
+            display: none;
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(13, 71, 161, 0.95);
+            border: 3px solid #2196F3;
+            color: #fff;
+            padding: 25px 40px;
+            border-radius: 12px;
+            font-size: 26px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(33, 150, 243, 0.8);
+            z-index: 18;
+            pointer-events: none;
+        }
+
+        #upgrade-menu, #admin-panel, #leaderboard-panel {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(14, 14, 18, 0.98);
+            border: 2px solid #ff9800;
+            border-radius: 12px;
+            padding: 20px;
+            width: 780px;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 0 40px rgba(255, 152, 0, 0.3);
+            z-index: 25;
+        }
+
+        #admin-panel { border-color: #9c27b0; box-shadow: 0 0 40px rgba(156, 39, 176, 0.4); width: 600px; }
+        #leaderboard-panel { border-color: #ff5722; box-shadow: 0 0 40px rgba(255, 87, 34, 0.4); width: 550px; }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+        .leaderboard-table th, .leaderboard-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            font-size: 14px;
+        }
+        .leaderboard-table th {
+            color: #ff5722;
+            background: #1a1a22;
+        }
+        .leaderboard-table tr:hover {
+            background: rgba(255, 87, 34, 0.1);
+        }
+
+        #ingame-admin-menu {
+            display: none;
+            position: absolute;
+            top: 70px;
+            right: 15px;
+            background: rgba(18, 12, 28, 0.92);
+            border: 2px solid #9c27b0;
+            border-radius: 10px;
+            padding: 15px;
+            width: 240px;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 0 25px rgba(156, 39, 176, 0.5);
+            z-index: 12;
+            pointer-events: auto;
+        }
+        #ingame-admin-menu h3 {
+            color: #e040fb;
+            font-size: 13px;
+            text-align: center;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #442255;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+        .quick-admin-btn {
+            background: #2a1a38;
+            border: 1px solid #6a1b9a;
+            color: #fff;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            text-align: left;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .quick-admin-btn:hover {
+            background: #4a148c;
+            border-color: #e040fb;
+        }
+
+        .garage-container {
+            display: flex;
+            gap: 20px;
+        }
+        .garage-left {
+            flex: 1.1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #101014;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .garage-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .up-btn {
+            background: #222228;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .up-btn:hover { background: #32323a; border-color: #ff9800; }
+
+        .camo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .camo-btn {
+            padding: 6px;
+            background: #1a1a20;
+            border: 1px solid #444;
+            color: #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .camo-btn.active { border-color: #ff9800; color: #ff9800; background: #2e2417; }
+
+        .admin-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #16161c;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+        .admin-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .admin-btn-sm {
+            padding: 6px 12px;
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .admin-btn-sm:hover { background: #444; border-color: #ff9800; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- GİRİŞ EKRANI -->
+    <div id="auth-screen" class="overlay-panel">
+        <h1>🎖️ TANK SAVAŞI 2D</h1>
+        <p style="color: #aaa; font-size: 13px;">Giriş yapın veya kayıt olun</p>
+        <div class="auth-box">
+            <input type="text" id="username" class="auth-input" placeholder="Kullanıcı Adı" autocomplete="off">
+            <input type="password" id="password" class="auth-input" placeholder="Şifre">
+            <button class="menu-btn btn-primary" onclick="handleAuth('login')">GİRİŞ YAP</button>
+            <button class="menu-btn" onclick="handleAuth('register')">KAYIT OL</button>
+        </div>
+        <p id="auth-msg" style="color: #ff4444; font-size: 13px; height: 16px; margin-top: 5px;"></p>
+    </div>
+
+    <!-- ANA MENÜ -->
+    <div id="main-menu" class="overlay-panel" style="display: none;">
+        <h1>🎖️ ANA MENÜ</h1>
+        <p id="welcome-user" style="color: #4CAF50; font-weight: bold;"></p>
+        <p id="user-lvl-badge" style="color: #00bcd4; font-size: 13px; font-weight: bold;">SEVİYE: 1 | XP: 0/100</p>
+        <p id="admin-status-badge" style="color: #ffd700; font-size: 12px; font-weight: bold; display: none;">👑 ADMIN MODU (SINIRSIZ CAN & GOD MODE)</p>
+        
+        <button class="menu-btn btn-primary" onclick="startGame('classic')">⚔️ SERBEST SAVAŞ</button>
+        <button class="menu-btn btn-conquest" onclick="startGame('conquest')">🚩 5 BÖLGELİ FETİH MODU (ZOR)</button>
+        <button class="menu-btn" onclick="openGarageFromMenu()">🛠️ GARAJ & KOSTÜM MARKETİ</button>
+        <button class="menu-btn btn-leaderboard" onclick="openLeaderboard()">🏆 LİDERLİK TABLOSU</button>
+        <button class="menu-btn btn-admin" id="btn-open-admin" style="display: none;" onclick="openAdminPanel()">👑 ADMIN PANELİ</button>
+        <button class="menu-btn btn-danger" onclick="logout()">🚪 ÇIKIŞ YAP</button>
+    </div>
+
+    <!-- ADMIN PANELİ -->
+    <div id="admin-panel">
+        <h2 style="text-align: center; color: #9c27b0;">👑 ADMIN YÖNETİM PANELİ</h2>
+        
+        <div class="admin-row">
+            <label style="font-size: 14px; font-weight: bold;">Düzenlenecek Oyuncu:</label>
+            <select id="admin-user-select" class="admin-select" onchange="onAdminUserSelect()" style="width: 250px;"></select>
+        </div>
+
+        <div id="admin-user-details" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="admin-row">
+                <span>Para / Jeton Ver:</span>
+                <div class="admin-controls">
+                    <button class="admin-btn-sm" onclick="adminAddGold(100)">+100 🪙</button>
+                    <button class="admin-btn-sm" onclick="adminAddGold(1000)">+1000 🪙</button>
+                    <button class="admin-btn-sm" onclick="adminAddGold(50000)">+50000 🪙</button>
+                </div>
+            </div>
+
+            <div class="admin-row">
+                <span>XP Ayarla (Seviye Kontrolü):</span>
+                <div class="admin-controls">
+                    <button class="admin-btn-sm" onclick="adminChangeXP(-100)">-100 XP</button>
+                    <button class="admin-btn-sm" onclick="adminChangeXP(100)">+100 XP</button>
+                    <button class="admin-btn-sm" onclick="adminChangeXP(500)">+500 XP</button>
+                </div>
+            </div>
+
+            <div class="admin-row">
+                <span>Adminlik Yetkisi Durumu:</span>
+                <div class="admin-controls">
+                    <span id="admin-target-status" style="font-weight: bold; margin-right: 10px;">-</span>
+                    <button class="admin-btn-sm" onclick="adminToggleRole()" id="btn-toggle-admin">Yetkiyi Değiştir</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="menu-btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="closeAdminPanel()">KAPAT</button>
+    </div>
+
+    <!-- LİDERLİK TABLOSU PANELİ -->
+    <div id="leaderboard-panel">
+        <h2 style="text-align: center; color: #ff5722;">🏆 LİDERLİK TABLOSU</h2>
+        <div style="max-height: 300px; overflow-y: auto;">
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Oyuncu</th>
+                        <th>Seviye</th>
+                        <th>Skor</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <!-- Dinamik doldurulacak -->
+                </tbody>
+            </table>
+        </div>
+        <button class="menu-btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="closeLeaderboard()">KAPAT</button>
+    </div>
+
+    <!-- HUD -->
+    <div id="ui-layer">
+        <div style="display: flex; gap: 10px;">
+            <div class="stat-box" id="health-ui">CAN: 100/100</div>
+            <div class="stat-box" id="gold-ui" style="border-color: #ffd700; color: #ffd700;">JETON: 0 🪙</div>
+            <div class="stat-box" id="score-ui" style="border-color: #ff9800;">SKOR: 0</div>
+            <div class="stat-box" id="level-ui" style="border-color: #00bcd4; color: #00bcd4;">SEVİYE: 1</div>
+            <div class="stat-box" id="mode-ui" style="border-color: #2196F3; color: #2196F3;">MOD: -</div>
+        </div>
+        <button class="hud-btn" onclick="returnToMenu()">🏠 MENÜ [ESC]</button>
+    </div>
+
+    <!-- ZAFER BANNER'I -->
+    <div id="victory-banner">
+        🏆 BÜYÜK ZAFER!<br>
+        <span style="font-size: 16px; color: #90caf9;">TÜM 5 BÖLGE BAŞARIYLA FETHEDİLDİ</span>
+    </div>
+
+    <!-- OYUN İÇİ ADMIN KONTROL KUTUSU (K TUŞU) -->
+    <div id="ingame-admin-menu">
+        <h3>👑 ADMIN KONTROL [K]</h3>
+        <button class="quick-admin-btn" onclick="quickSpawnAlly()">🛡️ +1 Dost Tank Çağır</button>
+        <button class="quick-admin-btn" onclick="quickSpawnEnemy()">👹 +1 Düşman Tank Çağır</button>
+        <button class="quick-admin-btn" onclick="quickSpawnBoss()">🔥 +1 Düşman BOSS Çağır</button>
+        <button class="quick-admin-btn" onclick="quickClearEnemies()" style="border-color: #d32f2f; color: #ff8a80;">💣 Haritayı Temizle (Nuke)</button>
+        <button class="quick-admin-btn" onclick="quickAddGold()">🪙 +1000 Jeton Ekle</button>
+    </div>
+
+    <!-- GARAJ & KOSTÜM MARKETİ -->
+    <div id="upgrade-menu">
+        <h2 style="text-align: center; color: #ff9800;">🛠️ TANK GARAJI & KOSTÜMLER</h2>
+        
+        <div class="garage-container">
+            <div class="garage-left">
+                <canvas id="garageCanvas" width="220" height="150" style="background:#16161a; border-radius:8px; border:1px solid #333;"></canvas>
+                <p style="font-size: 11px; color: #aaa; margin-top: 10px; font-weight: bold;">🎨 KOSTÜM / KAMUFLAJ SEÇİMİ</p>
+                <div class="camo-grid">
+                    <button class="camo-btn active" id="cbtn-default" onclick="selectCamo('default')">Yeşil Askeri<br><small>(Varsayılan)</small></button>
+                    <button class="camo-btn" id="cbtn-desert" onclick="buyOrSelectCamo('desert', 100)">Çöl Fırtınası<br><small id="cprice-desert">100 🪙</small></button>
+                    <button class="camo-btn" id="cbtn-arctic" onclick="buyOrSelectCamo('arctic', 250)">Kar/Kış<br><small id="cprice-arctic">250 🪙</small></button>
+                    <button class="camo-btn" id="cbtn-obsidian" onclick="buyOrSelectCamo('obsidian', 500)">Gece Obsidian<br><small id="cprice-obsidian">500 🪙</small></button>
+                    <button class="camo-btn" id="cbtn-gold" onclick="buyOrSelectCamo('gold', 1000)" style="grid-column: span 2; border-color: #ffd700; color:#ffd700;">✨ ALTIN KAPLAMA <br><small id="cprice-gold">1000 🪙</small></button>
+                </div>
+            </div>
+
+            <div class="garage-right">
+                <p style="font-size: 12px; color: #aaa; font-weight: bold; text-align: center;">⚙️ YÜKSELTMELER</p>
+                <button class="up-btn" onclick="buyUpgrade('damage')">
+                    <span>Hasar Gücü (Sev. <span id="lvl-damage">1</span>)</span>
+                    <span id="cost-damage">50 🪙</span>
+                </button>
+                <button class="up-btn" onclick="buyUpgrade('speed')">
+                    <span>Motor Hızı (Sev. <span id="lvl-speed">1</span>)</span>
+                    <span id="cost-speed">40 🪙</span>
+                </button>
+                <button class="up-btn" onclick="buyUpgrade('reload')">
+                    <span>Atış Hızı (Sev. <span id="lvl-reload">1</span>)</span>
+                    <span id="cost-reload">60 🪙</span>
+                </button>
+                <button class="up-btn" onclick="buyUpgrade('allies')">
+                    <span>Dost Tank Sayısı (<span id="lvl-allies">1</span>)</span>
+                    <span id="cost-allies">150 🪙</span>
+                </button>
+                <button class="up-btn" onclick="buyUpgrade('heal')">
+                    <span>Tamir Kiti (Can Yenile)</span>
+                    <span>30 🪙</span>
+                </button>
+            </div>
+        </div>
+
+        <button class="menu-btn btn-primary" style="width: 100%; margin-top: 5px;" onclick="closeGarage()">TAMAM / SAVAŞA DÖN</button>
+    </div>
+
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const garageCanvas = document.getElementById('garageCanvas');
+const gctx = garageCanvas.getContext('2d');
+
+const CAMO_PALETTES = {
+    default: { body: '#3e5c26', turret: '#4d7031', detail: '#273b18' },
+    desert: { body: '#c29b62', turret: '#d4ad72', detail: '#8a6a3b' },
+    arctic: { body: '#b0bec5', turret: '#cfd8dc', detail: '#78909c' },
+    obsidian: { body: '#1a1a24', turret: '#252533', detail: '#ff3366' },
+    gold: { body: '#e6c619', turret: '#ffd700', detail: '#997a00' },
+    ally: { body: '#1976D2', turret: '#2196F3', detail: '#0D47A1' },
+    enemy: { body: '#B71C1C', turret: '#E53935', detail: '#880E4F' }
+};
+
+const BLUE_BASE = { x: 450, y: 55, width: 220, height: 70 };
+const RED_SPAWN_ZONES = [
+    { x: 200, y: 150 },
+    { x: 700, y: 150 },
+    { x: 450, y: 200 },
+    { x: 200, y: 500 },
+    { x: 700, y: 500 }
+];
+
+let currentUser = null;
+let player = null;
+
+const state = {
+    inGame: false, gameMode: 'classic', score: 0, gold: 0, xp: 0,
+    selectedCamo: 'default', unlockedCamos: ['default'],
+    openedFromMenu: false, mouse: { x: 0, y: 0, isDown: false }, keys: {},
+    gameWon: false
+};
+
+const upgrades = {
+    damage: { lvl: 1, cost: 50, val: 25 },
+    speed: { lvl: 1, cost: 40, val: 2.5 },
+    reload: { lvl: 1, cost: 60, val: 15 },
+    allies: { lvl: 1, cost: 150, val: 1 }
+};
+
+const bullets = [], enemies = [], allies = [], particles = [], conquestZones = [], soldiers = [];
+
+class ConquestZone {
+    constructor(id, x, y, radius = 55) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.owner = 'neutral';
+        this.progress = 0;
+    }
+
+    update() {
+        let playerUnits = 0;
+        let enemyUnits = 0;
+
+        if (player && Math.hypot(player.x - this.x, player.y - this.y) < this.radius) playerUnits++;
+        allies.forEach(a => {
+            if (Math.hypot(a.x - this.x, a.y - this.y) < this.radius) playerUnits++;
+        });
+
+        enemies.forEach(e => {
+            if (Math.hypot(e.x - this.x, e.y - this.y) < this.radius) enemyUnits++;
+        });
+
+        if (playerUnits > enemyUnits) {
+            this.progress = Math.min(100, this.progress + 0.35);
+        } else if (enemyUnits > playerUnits) {
+            this.progress = Math.max(-100, this.progress - 0.4);
+        }
+
+        if (this.progress >= 100) this.owner = 'player';
+        else if (this.progress <= -100) this.owner = 'enemy';
+        else if (Math.abs(this.progress) < 10) this.owner = 'neutral';
+
+        if (this.owner === 'player' && Math.random() < 0.04) {
+            state.score += 2;
+            state.gold += 1;
+            updateUI();
+        }
+    }
+
+    draw(targetCtx) {
+        targetCtx.save();
+        targetCtx.beginPath();
+        targetCtx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+
+        let color = '#777777';
+        if (this.owner === 'player') color = '#2196F3';
+        if (this.owner === 'enemy') color = '#f44336';
+
+        targetCtx.fillStyle = color + '22';
+        targetCtx.fill();
+        targetCtx.lineWidth = 2;
+        targetCtx.strokeStyle = color;
+        targetCtx.stroke();
+
+        targetCtx.fillStyle = '#ffffff';
+        targetCtx.font = 'bold 13px Arial';
+        targetCtx.textAlign = 'center';
+        targetCtx.fillText(`BÖLGE ${this.id}`, this.x, this.y - 8);
+
+        targetCtx.fillStyle = '#333';
+        targetCtx.fillRect(this.x - 25, this.y + 8, 50, 6);
+        
+        let pWidth = (Math.abs(this.progress) / 100) * 50;
+        targetCtx.fillStyle = this.progress >= 0 ? '#2196F3' : '#f44336';
+        targetCtx.fillRect(this.x - 25, this.y + 8, pWidth, 6);
+
+        targetCtx.restore();
+    }
+}
+
+function initConquestZones() {
+    conquestZones.length = 0;
+    conquestZones.push(new ConquestZone('A', 200, 200));
+    conquestZones.push(new ConquestZone('B', 700, 200));
+    conquestZones.push(new ConquestZone('C', 450, 310));
+    conquestZones.push(new ConquestZone('D', 200, 480));
+    conquestZones.push(new ConquestZone('E', 700, 480));
+}
+
+function checkConquestVictory() {
+    if (state.gameMode !== 'conquest' || state.gameWon) return;
+
+    const allCaptured = conquestZones.length > 0 && conquestZones.every(z => z.owner === 'player');
+
+    if (allCaptured) {
+        state.gameWon = true;
+        state.score += 500;
+        state.gold += 250;
+        state.xp += 300;
+        saveUserData();
+        updateUI();
+
+        document.getElementById('victory-banner').style.display = 'block';
+
+        setTimeout(() => {
+            document.getElementById('victory-banner').style.display = 'none';
+            returnToMenu();
+        }, 4000);
+    }
+}
+
+class Soldier {
+    constructor(x, y, isAlly, isMedic = false) {
+        this.x = x;
+        this.y = y;
+        this.isAlly = isAlly;
+        this.isMedic = isMedic;
+        this.health = isMedic ? 25 : 35;
+        this.maxHealth = this.health;
+        this.speed = isMedic ? 1.4 : 1.6;
+        this.cooldown = 0;
+        this.healCooldown = 0;
+    }
+
+    update() {
+        if (this.isMedic && this.isAlly) {
+            let targetToHeal = null;
+            let minHDist = 9999;
+
+            if (player) {
+                let d = Math.hypot(player.x - this.x, player.y - this.y);
+                if (d < minHDist) { minHDist = d; targetToHeal = player; }
+            }
+            allies.forEach(a => {
+                let d = Math.hypot(a.x - this.x, a.y - this.y);
+                if (d < minHDist) { minHDist = d; targetToHeal = a; }
+            });
+
+            if (targetToHeal && minHDist < 120) {
+                let angle = Math.atan2(targetToHeal.y - this.y, targetToHeal.x - this.x);
+                if (minHDist > 35) {
+                    this.x += Math.cos(angle) * this.speed;
+                    this.y += Math.sin(angle) * this.speed;
+                }
+
+                if (minHDist < 50 && this.healCooldown <= 0) {
+                    if (targetToHeal.health < targetToHeal.maxHealth) {
+                        targetToHeal.health = Math.min(targetToHeal.maxHealth, targetToHeal.health + 2);
+                        updateUI();
+                    }
+                    this.healCooldown = 30;
+                }
+            } else if (player) {
+                let angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(angle) * (this.speed * 0.8);
+                this.y += Math.sin(angle) * (this.speed * 0.8);
+            }
+        } else {
+            let target = null;
+            let minDist = 9999;
+
+            soldiers.forEach(other => {
+                if (other.isAlly !== this.isAlly) {
+                    let d = Math.hypot(other.x - this.x, other.y - this.y);
+                    if (d < minDist) { minDist = d; target = other; }
+                }
+            });
+
+            if (target) {
+                let angle = Math.atan2(target.y - this.y, target.x - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+
+                if (minDist < 30 && this.cooldown <= 0) {
+                    target.health -= 8;
+                    this.cooldown = 45;
+                }
+            } else {
+                if (Math.random() < 0.05) {
+                    this.x += (Math.random() - 0.5) * 20;
+                    this.y += (Math.random() - 0.5) * 20;
+                }
+            }
+        }
+
+        if (this.cooldown > 0) this.cooldown--;
+        if (this.healCooldown > 0) this.healCooldown--;
+    }
+
+    draw(targetCtx) {
+        targetCtx.save();
+        targetCtx.translate(this.x, this.y);
+
+        if (this.isMedic) {
+            targetCtx.fillStyle = '#2e5c1e';
+            targetCtx.beginPath();
+            targetCtx.arc(0, 0, 7, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.strokeStyle = '#fff';
+            targetCtx.lineWidth = 1.5;
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = '#ffffff';
+            targetCtx.fillRect(-3, -3, 6, 6);
+            targetCtx.fillStyle = '#f44336';
+            targetCtx.fillRect(-2, -1, 4, 2);
+            targetCtx.fillRect(-1, -2, 2, 4);
+        } else {
+            targetCtx.fillStyle = '#2e5c1e';
+            targetCtx.beginPath();
+            targetCtx.arc(0, 0, 6, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.strokeStyle = '#14290d';
+            targetCtx.lineWidth = 1;
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = '#111';
+            targetCtx.fillRect(2, -2, 9, 3);
+        }
+
+        targetCtx.restore();
+    }
+}
+
+function spawnSoldiersWave() {
+    if (soldiers.length < 16) {
+        soldiers.push(new Soldier(BLUE_BASE.x + (Math.random() - 0.5) * 120, BLUE_BASE.y + 45, true, false));
+        if (Math.random() < 0.4) {
+            soldiers.push(new Soldier(BLUE_BASE.x + (Math.random() - 0.5) * 80, BLUE_BASE.y + 35, true, true));
+        }
+        soldiers.push(new Soldier(Math.random() * 800 + 50, 560, false, false));
+    }
+}
+
+class Bullet {
+    constructor(x, y, angle, speed, damage, isEnemy = false, isAlly = false) {
+        this.x = x; this.y = y;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.damage = damage;
+        this.isEnemy = isEnemy;
+        this.isAlly = isAlly;
+        this.life = 120;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+    }
+    draw(targetCtx) {
+        targetCtx.fillStyle = this.isEnemy ? '#ff3333' : (this.isAlly ? '#3388ff' : '#ffeb3b');
+        targetCtx.beginPath();
+        targetCtx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        targetCtx.fill();
+    }
+}
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y;
+        this.vx = (Math.random() - 0.5) * 6;
+        this.vy = (Math.random() - 0.5) * 6;
+        this.radius = Math.random() * 3 + 2;
+        this.color = color;
+        this.life = 25;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+    }
+    draw(targetCtx) {
+        targetCtx.fillStyle = this.color;
+        targetCtx.beginPath();
+        targetCtx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        targetCtx.fill();
+    }
+}
+
+function createExplosion(x, y, color = '#ff9800') {
+    for (let i = 0; i < 15; i++) {
+        particles.push(new Particle(x, y, color));
+    }
+}
+
+function getLevelFromXP(xp) {
+    return Math.floor(xp / 100) + 1;
+}
+
+class BaseTank {
+    constructor(x, y, camoKey) {
+        this.x = x;
+        this.y = y;
+        this.width = 40;
+        this.height = 30;
+        this.angle = 0;
+        this.turretAngle = 0;
+        this.camoKey = camoKey;
+        this.health = 100;
+        this.maxHealth = 100;
+        this.speed = 2.5;
+        this.cooldown = 0;
+        this.reloadTime = 15;
+    }
+
+    drawTank(targetCtx) {
+        targetCtx.save();
+        targetCtx.translate(this.x, this.y);
+
+        targetCtx.save();
+        targetCtx.rotate(this.angle);
+
+        const palette = CAMO_PALETTES[this.camoKey] || CAMO_PALETTES.default;
+
+        targetCtx.fillStyle = '#111';
+        targetCtx.fillRect(-this.width / 2 - 2, -this.height / 2 - 4, this.width + 4, 6);
+        targetCtx.fillRect(-this.width / 2 - 2, this.height / 2 - 2, this.width + 4, 6);
+
+        targetCtx.fillStyle = palette.body;
+        targetCtx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+        targetCtx.strokeStyle = palette.detail;
+        targetCtx.lineWidth = 2;
+        targetCtx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+        targetCtx.restore();
+
+        targetCtx.save();
+        targetCtx.rotate(this.turretAngle);
+
+        targetCtx.fillStyle = palette.detail;
+        targetCtx.fillRect(0, -3, 26, 6);
+
+        targetCtx.fillStyle = palette.turret;
+        targetCtx.beginPath();
+        targetCtx.arc(0, 0, 11, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.strokeStyle = palette.detail;
+        targetCtx.lineWidth = 2;
+        targetCtx.stroke();
+
+        targetCtx.restore();
+        targetCtx.restore();
+
+        if (this.health < this.maxHealth || isCurrentAdmin()) {
+            targetCtx.fillStyle = '#ff0000';
+            targetCtx.fillRect(this.x - 20, this.y - 28, 40, 5);
+            targetCtx.fillStyle = '#00ff00';
+            targetCtx.fillRect(this.x - 20, this.y - 28, (this.health / this.maxHealth) * 40, 5);
+        }
+    }
+}
+
+class PlayerTank extends BaseTank {
+    constructor(x, y) {
+        super(x, y, state.selectedCamo);
+        this.speed = upgrades.speed.val;
+        this.reloadTime = upgrades.reload.val;
+    }
+
+    update() {
+        this.camoKey = state.selectedCamo;
+        this.speed = upgrades.speed.val;
+        this.reloadTime = upgrades.reload.val;
+
+        let dx = 0, dy = 0;
+        if (state.keys['KeyW'] || state.keys['ArrowUp']) dy -= 1;
+        if (state.keys['KeyS'] || state.keys['ArrowDown']) dy += 1;
+        if (state.keys['KeyA'] || state.keys['ArrowLeft']) dx -= 1;
+        if (state.keys['KeyD'] || state.keys['ArrowRight']) dx += 1;
+
+        if (dx !== 0 || dy !== 0) {
+            this.angle = Math.atan2(dy, dx);
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+        }
+
+        this.x = Math.max(20, Math.min(canvas.width - 20, this.x));
+        this.y = Math.max(20, Math.min(canvas.height - 20, this.y));
+
+        this.turretAngle = Math.atan2(state.mouse.y - this.y, state.mouse.x - this.x);
+
+        if (this.cooldown > 0) this.cooldown--;
+
+        if (state.mouse.isDown && this.cooldown <= 0) {
+            bullets.push(new Bullet(this.x, this.y, this.turretAngle, 8, upgrades.damage.val, false, false));
+            this.cooldown = this.reloadTime;
+        }
+
+        if (isCurrentAdmin()) {
+            this.health = this.maxHealth;
+        }
+    }
+}
+
+class AllyTank extends BaseTank {
+    constructor(x, y) {
+        super(x, y, 'ally');
+        this.speed = 2.0;
+        this.reloadTime = 25;
+    }
+
+    update() {
+        let target = null;
+        let minDist = 9999;
+
+        enemies.forEach(e => {
+            let d = Math.hypot(e.x - this.x, e.y - this.y);
+            if (d < minDist) { minDist = d; target = e; }
+        });
+
+        if (target) {
+            this.turretAngle = Math.atan2(target.y - this.y, target.x - this.x);
+            if (minDist > 150) {
+                this.angle = this.turretAngle;
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+            }
+            if (this.cooldown <= 0) {
+                bullets.push(new Bullet(this.x, this.y, this.turretAngle, 7, 20, false, true));
+                this.cooldown = this.reloadTime;
+            }
+        } else if (player) {
+            let d = Math.hypot(player.x - this.x, player.y - this.y);
+            if (d > 80) {
+                this.angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+            }
+        }
+
+        if (this.cooldown > 0) this.cooldown--;
+    }
+}
+
+class EnemyTank extends BaseTank {
+    constructor(x, y, isBoss = false) {
+        super(x, y, 'enemy');
+        this.isBoss = isBoss;
+        if (isBoss) {
+            this.width = 55;
+            this.height = 40;
+            this.maxHealth = 400;
+            this.health = 400;
+            this.speed = 1.2;
+            this.reloadTime = 30;
+        } else {
+            this.maxHealth = 80;
+            this.health = 80;
+            this.speed = 1.8;
+            this.reloadTime = 40;
+        }
+    }
+
+    update() {
+        let targets = [];
+        if (player) targets.push(player);
+        allies.forEach(a => targets.push(a));
+
+        let closest = null;
+        let minDist = 9999;
+
+        targets.forEach(t => {
+            let d = Math.hypot(t.x - this.x, t.y - this.y);
+            if (d < minDist) { minDist = d; closest = t; }
+        });
+
+        if (closest) {
+            this.turretAngle = Math.atan2(closest.y - this.y, closest.x - this.x);
+            if (minDist > 120) {
+                this.angle = this.turretAngle;
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+            }
+
+            if (this.cooldown <= 0) {
+                let dmg = this.isBoss ? 25 : 10;
+                let spd = this.isBoss ? 7 : 6;
+                bullets.push(new Bullet(this.x, this.y, this.turretAngle, spd, dmg, true, false));
+                this.cooldown = this.reloadTime;
+            }
+        }
+
+        if (this.cooldown > 0) this.cooldown--;
+    }
+}
+
+(function initDefaultUsers() {
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    if (!users['Chronyx']) {
+        users['Chronyx'] = {
+            password: 'Mka1938s', gold: 999999, score: 99999, xp: 5000,
+            isAdmin: true, selectedCamo: 'gold',
+            unlockedCamos: ['default', 'desert', 'arctic', 'obsidian', 'gold'],
+            upgrades: { damage: 10, speed: 10, reload: 10, allies: 3 }
+        };
+    }
+    if (!users['wenxas']) {
+        users['wenxas'] = {
+            password: 'wenxas61', gold: 999999, score: 99999, xp: 5000,
+            isAdmin: true, selectedCamo: 'gold',
+            unlockedCamos: ['default', 'desert', 'arctic', 'obsidian', 'gold'],
+            upgrades: { damage: 10, speed: 10, reload: 10, allies: 3 }
+        };
+    }
+    localStorage.setItem('tank_game_users', JSON.stringify(users));
+})();
+
+function handleAuth(type) {
+    const userIn = document.getElementById('username').value.trim();
+    const passIn = document.getElementById('password').value.trim();
+    const msg = document.getElementById('auth-msg');
+
+    if (!userIn || !passIn) { msg.innerText = "Lütfen alanları doldurun!"; return; }
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+
+    if (type === 'register') {
+        if (users[userIn]) { msg.innerText = "Bu kullanıcı mevcut!"; return; }
+        users[userIn] = {
+            password: passIn, gold: 0, score: 0, xp: 0,
+            selectedCamo: 'default', unlockedCamos: ['default'],
+            isAdmin: false, upgrades: { damage: 1, speed: 1, reload: 1, allies: 1 }
+        };
+        localStorage.setItem('tank_game_users', JSON.stringify(users));
+        msg.style.color = "#4CAF50"; msg.innerText = "Kayıt başarılı!";
+    } else if (type === 'login') {
+        if (!users[userIn] || users[userIn].password !== passIn) {
+            msg.style.color = "#ff4444"; msg.innerText = "Hatalı kullanıcı adı veya şifre!"; return;
+        }
+        currentUser = userIn;
+        loadUserData();
+        showMainMenu();
+    }
+}
+
+function isCurrentAdmin() {
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    return users[currentUser] && users[currentUser].isAdmin;
+}
+
+function loadUserData() {
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    const data = users[currentUser];
+    if (data) {
+        state.gold = data.gold || 0;
+        state.score = data.score || 0;
+        state.xp = data.xp || 0;
+        state.selectedCamo = data.selectedCamo || 'default';
+        state.unlockedCamos = data.unlockedCamos || ['default'];
+        if (data.isAdmin && !state.unlockedCamos.includes('gold')) {
+            state.unlockedCamos = ['default', 'desert', 'arctic', 'obsidian', 'gold'];
+        }
+        if (data.upgrades) {
+            upgrades.damage.lvl = data.upgrades.damage || 1;
+            upgrades.speed.lvl = data.upgrades.speed || 1;
+            upgrades.reload.lvl = data.upgrades.reload || 1;
+            upgrades.allies.lvl = data.upgrades.allies || 1;
+
+            upgrades.damage.val = 20 + upgrades.damage.lvl * 5;
+            upgrades.speed.val = 2.0 + upgrades.speed.lvl * 0.5;
+            upgrades.reload.val = Math.max(5, 20 - upgrades.reload.lvl);
+            upgrades.allies.val = upgrades.allies.lvl;
+        }
+    }
+}
+
+function saveUserData() {
+    if (!currentUser) return;
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    if (users[currentUser]) {
+        users[currentUser].gold = state.gold;
+        users[currentUser].score = state.score;
+        users[currentUser].xp = state.xp;
+        users[currentUser].selectedCamo = state.selectedCamo;
+        users[currentUser].unlockedCamos = state.unlockedCamos;
+        users[currentUser].upgrades = {
+            damage: upgrades.damage.lvl,
+            speed: upgrades.speed.lvl,
+            reload: upgrades.reload.lvl,
+            allies: upgrades.allies.lvl
+        };
+        localStorage.setItem('tank_game_users', JSON.stringify(users));
+    }
+}
+
+function showMainMenu() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'none';
+    document.getElementById('leaderboard-panel').style.display = 'none';
+    document.getElementById('upgrade-menu').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    document.getElementById('welcome-user').innerText = `HOŞ GELDİN, ${currentUser.toUpperCase()}!`;
+
+    const lvl = getLevelFromXP(state.xp);
+    document.getElementById('user-lvl-badge').innerText = `SEVİYE: ${lvl} | XP: ${state.xp}/${lvl * 100}`;
+
+    const adminBadge = document.getElementById('admin-status-badge');
+    const adminBtn = document.getElementById('btn-open-admin');
+
+    if (isCurrentAdmin()) {
+        adminBadge.style.display = 'block';
+        adminBtn.style.display = 'inline-block';
+    } else {
+        adminBadge.style.display = 'none';
+        adminBtn.style.display = 'none';
+    }
+}
+
+function logout() {
+    currentUser = null;
+    state.inGame = false;
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('ui-layer').style.display = 'none';
+    document.getElementById('ingame-admin-menu').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+}
+
+function startGame(mode) {
+    state.inGame = true;
+    state.gameMode = mode;
+    state.gameWon = false;
+
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('ui-layer').style.display = 'flex';
+
+    bullets.length = 0;
+    enemies.length = 0;
+    allies.length = 0;
+    particles.length = 0;
+    soldiers.length = 0;
+
+    player = new PlayerTank(BLUE_BASE.x, BLUE_BASE.y);
+
+    for (let i = 0; i < upgrades.allies.val; i++) {
+        allies.push(new AllyTank(BLUE_BASE.x - 40 + i * 40, BLUE_BASE.y + 30));
+    }
+
+    if (mode === 'conquest') {
+        initConquestZones();
+        RED_SPAWN_ZONES.forEach((pos, idx) => {
+            enemies.push(new EnemyTank(pos.x, pos.y, idx === 2));
+        });
+    } else {
+        spawnEnemiesClassic(3);
+    }
+
+    updateUI();
+}
+
+function spawnEnemiesClassic(count) {
+    for (let i = 0; i < count; i++) {
+        let ex = Math.random() < 0.5 ? Math.random() * 200 + 50 : Math.random() * 200 + 650;
+        let ey = Math.random() * 300 + 250;
+        enemies.push(new EnemyTank(ex, ey, Math.random() < 0.2));
+    }
+}
+
+function returnToMenu() {
+    state.inGame = false;
+    document.getElementById('ui-layer').style.display = 'none';
+    document.getElementById('ingame-admin-menu').style.display = 'none';
+    saveUserData();
+    showMainMenu();
+}
+
+function updateUI() {
+    if (!player) return;
+    document.getElementById('health-ui').innerText = `CAN: ${Math.max(0, Math.floor(player.health))}/${player.maxHealth}`;
+    document.getElementById('gold-ui').innerText = `JETON: ${state.gold} 🪙`;
+    document.getElementById('score-ui').innerText = `SKOR: ${state.score}`;
+    document.getElementById('level-ui').innerText = `SEVİYE: ${getLevelFromXP(state.xp)}`;
+    document.getElementById('mode-ui').innerText = `MOD: ${state.gameMode.toUpperCase()}`;
+}
+
+function openGarageFromMenu() {
+    state.openedFromMenu = true;
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('upgrade-menu').style.display = 'flex';
+    updateGarageUI();
+    renderGaragePreview();
+}
+
+function closeGarage() {
+    document.getElementById('upgrade-menu').style.display = 'none';
+    saveUserData();
+    if (state.openedFromMenu) {
+        showMainMenu();
+    }
+}
+
+function selectCamo(key) {
+    if (state.unlockedCamos.includes(key) || isCurrentAdmin()) {
+        state.selectedCamo = key;
+        updateGarageUI();
+        renderGaragePreview();
+    }
+}
+
+function buyOrSelectCamo(key, cost) {
+    if (state.unlockedCamos.includes(key) || isCurrentAdmin()) {
+        selectCamo(key);
+    } else {
+        if (state.gold >= cost) {
+            state.gold -= cost;
+            state.unlockedCamos.push(key);
+            selectCamo(key);
+            saveUserData();
+        } else {
+            alert("Yetersiz jeton!");
+        }
+    }
+}
+
+function updateGarageUI() {
+    const camos = ['default', 'desert', 'arctic', 'obsidian', 'gold'];
+    camos.forEach(c => {
+        const btn = document.getElementById(`cbtn-${c}`);
+        if (!btn) return;
+
+        if (state.selectedCamo === c) btn.classList.add('active');
+        else btn.classList.remove('active');
+
+        const priceTag = document.getElementById(`cprice-${c}`);
+        if (priceTag) {
+            if (state.unlockedCamos.includes(c) || isCurrentAdmin()) {
+                priceTag.innerText = "(SAHİPSİN)";
+                priceTag.style.color = "#4CAF50";
+            }
+        }
+    });
+
+    document.getElementById('lvl-damage').innerText = upgrades.damage.lvl;
+    document.getElementById('cost-damage').innerText = `${upgrades.damage.cost * upgrades.damage.lvl} 🪙`;
+
+    document.getElementById('lvl-speed').innerText = upgrades.speed.lvl;
+    document.getElementById('cost-speed').innerText = `${upgrades.speed.cost * upgrades.speed.lvl} 🪙`;
+
+    document.getElementById('lvl-reload').innerText = upgrades.reload.lvl;
+    document.getElementById('cost-reload').innerText = `${upgrades.reload.cost * upgrades.reload.lvl} 🪙`;
+
+    document.getElementById('lvl-allies').innerText = upgrades.allies.lvl;
+    document.getElementById('cost-allies').innerText = `${upgrades.allies.cost * upgrades.allies.lvl} 🪙`;
+}
+
+function renderGaragePreview() {
+    gctx.clearRect(0, 0, garageCanvas.width, garageCanvas.height);
+    const tempTank = new BaseTank(garageCanvas.width / 2, garageCanvas.height / 2, state.selectedCamo);
+    tempTank.drawTank(gctx);
+}
+
+function buyUpgrade(type) {
+    if (type === 'heal') {
+        if (state.gold >= 30 && player) {
+            state.gold -= 30;
+            player.health = player.maxHealth;
+            updateUI();
+            saveUserData();
+        }
+        return;
+    }
+
+    const up = upgrades[type];
+    const cost = up.cost * up.lvl;
+    if (state.gold >= cost) {
+        state.gold -= cost;
+        up.lvl++;
+        if (type === 'damage') up.val = 20 + up.lvl * 5;
+        if (type === 'speed') up.val = 2.0 + up.lvl * 0.5;
+        if (type === 'reload') up.val = Math.max(5, 20 - up.lvl);
+        if (type === 'allies') up.val = up.lvl;
+
+        updateGarageUI();
+        saveUserData();
+    } else {
+        alert("Yetersiz Jeton!");
+    }
+}
+
+function openAdminPanel() {
+    if (!isCurrentAdmin()) return;
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'flex';
+    populateAdminUserList();
+}
+
+function closeAdminPanel() {
+    document.getElementById('admin-panel').style.display = 'none';
+    showMainMenu();
+}
+
+function openLeaderboard() {
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('leaderboard-panel').style.display = 'flex';
+    populateLeaderboard();
+}
+
+function closeLeaderboard() {
+    document.getElementById('leaderboard-panel').style.display = 'none';
+    showMainMenu();
+}
+
+function populateLeaderboard() {
+    const tbody = document.getElementById('leaderboard-body');
+    tbody.innerHTML = '';
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+
+    let userList = Object.keys(users).map(name => ({
+        name: name,
+        score: users[name].score || 0,
+        xp: users[name].xp || 0
+    }));
+
+    userList.sort((a, b) => b.score - a.score);
+
+    userList.forEach((u, index) => {
+        let tr = document.createElement('tr');
+        let rankIcon = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : `${index + 1}`));
+        tr.innerHTML = `
+            <td><b>${rankIcon}</b></td>
+            <td>${u.name.toUpperCase()}</td>
+            <td style="color: #00bcd4;">Seviye ${getLevelFromXP(u.xp)}</td>
+            <td style="color: #ff9800; font-weight: bold;">${u.score}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function populateAdminUserList() {
+    const select = document.getElementById('admin-user-select');
+    select.innerHTML = '';
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+
+    Object.keys(users).forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u;
+        opt.innerText = `${u} ${users[u].isAdmin ? '👑 (Admin)' : ''}`;
+        if (u === currentUser) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    onAdminUserSelect();
+}
+
+function onAdminUserSelect() {
+    const targetUser = document.getElementById('admin-user-select').value;
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    const uData = users[targetUser];
+
+    if (uData) {
+        document.getElementById('admin-target-status').innerText = uData.isAdmin ? "👑 ADMIN" : "👤 OYUNCU";
+        document.getElementById('admin-target-status').style.color = uData.isAdmin ? "#ffd700" : "#aaa";
+    }
+}
+
+function adminAddGold(amt) {
+    const targetUser = document.getElementById('admin-user-select').value;
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    if (users[targetUser]) {
+        users[targetUser].gold = (users[targetUser].gold || 0) + amt;
+        localStorage.setItem('tank_game_users', JSON.stringify(users));
+        if (targetUser === currentUser) state.gold = users[targetUser].gold;
+        alert(`${amt} Jeton eklendi!`);
+        updateUI();
+    }
+}
+
+function adminChangeXP(amt) {
+    const targetUser = document.getElementById('admin-user-select').value;
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    if (users[targetUser]) {
+        users[targetUser].xp = Math.max(0, (users[targetUser].xp || 0) + amt);
+        localStorage.setItem('tank_game_users', JSON.stringify(users));
+        if (targetUser === currentUser) state.xp = users[targetUser].xp;
+        alert(`XP güncellendi!`);
+        showMainMenu();
+    }
+}
+
+function adminToggleRole() {
+    const targetUser = document.getElementById('admin-user-select').value;
+    const users = JSON.parse(localStorage.getItem('tank_game_users') || '{}');
+    if (users[targetUser]) {
+        users[targetUser].isAdmin = !users[targetUser].isAdmin;
+        localStorage.setItem('tank_game_users', JSON.stringify(users));
+        populateAdminUserList();
+    }
+}
+
+function quickSpawnAlly() {
+    if (!isCurrentAdmin() || !state.inGame) return;
+    allies.push(new AllyTank(player.x + 30, player.y + 30));
+}
+
+function quickSpawnEnemy() {
+    if (!isCurrentAdmin() || !state.inGame) return;
+    enemies.push(new EnemyTank(Math.random() * 800 + 50, Math.random() * 400 + 100));
+}
+
+function quickSpawnBoss() {
+    if (!isCurrentAdmin() || !state.inGame) return;
+    enemies.push(new EnemyTank(Math.random() * 800 + 50, Math.random() * 400 + 100, true));
+}
+
+function quickClearEnemies() {
+    if (!isCurrentAdmin() || !state.inGame) return;
+    enemies.forEach(e => createExplosion(e.x, e.y, '#ff0000'));
+    enemies.length = 0;
+}
+
+function quickAddGold() {
+    if (!isCurrentAdmin()) return;
+    state.gold += 1000;
+    saveUserData();
+    updateUI();
+}
+
+window.addEventListener('keydown', e => {
+    state.keys[e.code] = true;
+
+    if (e.code === 'KeyK' && isCurrentAdmin() && state.inGame) {
+        const quickMenu = document.getElementById('ingame-admin-menu');
+        quickMenu.style.display = quickMenu.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    if (e.code === 'Escape' && state.inGame) {
+        returnToMenu();
+    }
+});
+
+window.addEventListener('keyup', e => { state.keys[e.code] = false; });
+
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    state.mouse.x = e.clientX - rect.left;
+    state.mouse.y = e.clientY - rect.top;
+});
+
+canvas.addEventListener('mousedown', () => state.mouse.isDown = true);
+window.addEventListener('mouseup', () => state.mouse.isDown = false);
+
+function drawMap() {
+    ctx.fillStyle = '#1e241a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.strokeStyle = '#2196F3';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.strokeRect(BLUE_BASE.x - BLUE_BASE.width / 2, BLUE_BASE.y - BLUE_BASE.height / 2, BLUE_BASE.width, BLUE_BASE.height);
+    
+    ctx.fillStyle = 'rgba(33, 150, 243, 0.1)';
+    ctx.fillRect(BLUE_BASE.x - BLUE_BASE.width / 2, BLUE_BASE.y - BLUE_BASE.height / 2, BLUE_BASE.width, BLUE_BASE.height);
+
+    ctx.fillStyle = '#64b5f6';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('MAVİ TAKIM DOĞUM ALANI', BLUE_BASE.x, BLUE_BASE.y - 18);
+    ctx.restore();
+
+    ctx.strokeStyle = '#283022';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 50) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+}
+
+let enemySpawnTimer = 0;
+
+function gameLoop() {
+    if (state.inGame) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMap();
+
+        if (state.gameMode === 'conquest') {
+            conquestZones.forEach(z => {
+                z.update();
+                z.draw(ctx);
+            });
+            checkConquestVictory();
+            spawnSoldiersWave();
+
+            enemySpawnTimer++;
+            if (enemies.length < 5 && enemySpawnTimer > 180) {
+                let spawnPos = RED_SPAWN_ZONES[Math.floor(Math.random() * RED_SPAWN_ZONES.length)];
+                enemies.push(new EnemyTank(spawnPos.x, spawnPos.y, Math.random() < 0.25));
+                enemySpawnTimer = 0;
+            }
+        }
+
+        if (player) {
+            player.update();
+            player.drawTank(ctx);
+            updateUI();
+        }
+
+        for (let i = allies.length - 1; i >= 0; i--) {
+            let a = allies[i];
+            a.update();
+            a.drawTank(ctx);
+            if (a.health <= 0) {
+                createExplosion(a.x, a.y, '#2196F3');
+                allies.splice(i, 1);
+                setTimeout(() => {
+                    if (state.inGame) {
+                        allies.push(new AllyTank(BLUE_BASE.x, BLUE_BASE.y + 20));
+                    }
+                }, 7000);
+            }
+        }
+
+        for (let i = soldiers.length - 1; i >= 0; i--) {
+            let s = soldiers[i];
+            s.update();
+            s.draw(ctx);
+            if (s.health <= 0) {
+                soldiers.splice(i, 1);
+            }
+        }
+
+        enemies.forEach((e, index) => {
+            e.update();
+            e.drawTank(ctx);
+        });
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            b.update();
+            b.draw(ctx);
+
+            if (b.life <= 0 || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+                bullets.splice(i, 1);
+                continue;
+            }
+
+            if (b.isEnemy && player) {
+                if (Math.hypot(b.x - player.x, b.y - player.y) < 20) {
+                    if (!isCurrentAdmin()) player.health -= b.damage;
+                    createExplosion(b.x, b.y, '#ff3333');
+                    bullets.splice(i, 1);
+                    updateUI();
+
+                    if (player.health <= 0 && !isCurrentAdmin()) {
+                        alert("TANKINIZ İMHA EDİLDİ!");
+                        returnToMenu();
+                    }
+                    continue;
+                }
+            }
+
+            if (b.isEnemy) {
+                for (let j = allies.length - 1; j >= 0; j--) {
+                    let a = allies[j];
+                    if (Math.hypot(b.x - a.x, b.y - a.y) < 20) {
+                        a.health -= b.damage;
+                        createExplosion(b.x, b.y, '#ff3333');
+                        bullets.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+            if (!b.isEnemy) {
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    let e = enemies[j];
+                    if (Math.hypot(b.x - e.x, b.y - e.y) < (e.isBoss ? 28 : 20)) {
+                        e.health -= b.damage;
+                        createExplosion(b.x, b.y, '#ffeb3b');
+                        bullets.splice(i, 1);
+
+                        if (e.health <= 0) {
+                            createExplosion(e.x, e.y, '#ff9800');
+                            state.score += e.isBoss ? 100 : 20;
+                            state.gold += e.isBoss ? 50 : 10;
+                            state.xp += e.isBoss ? 40 : 15;
+                            enemies.splice(j, 1);
+                            saveUserData();
+                            updateUI();
+
+                            if (state.gameMode === 'classic' && enemies.length === 0) {
+                                spawnEnemiesClassic(Math.floor(Math.random() * 3) + 2);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.update();
+            p.draw(ctx);
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
